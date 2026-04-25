@@ -1385,6 +1385,10 @@ async function handleWsMessage(data, ws) {
         sessionId = data.sessionId;
         localStorage.setItem('sessionId', sessionId);
       }
+      // 重新计算房主身份（以防 roomState 提前到达时 sessionId 还未知）
+      if (ownerId && sessionId) {
+        isOwner = sessionId === ownerId;
+      }
       showToast('成功加入房间', 'success');
       break;
     }

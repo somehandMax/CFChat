@@ -318,15 +318,6 @@ export class ChatRoom {
     });
 
     this.sessions.set(webSocket, session);
-
-    // 发送房间状态同步（用于重连场景）
-    session.blockedMessages.push(JSON.stringify({
-      type: "roomState",
-      ownerId: this.roomState.ownerId,
-      userOrder: this.roomState.userOrder,
-      aesKey: this.roomState.aesKey,
-      settings: this.roomState.settings
-    }));
   }
 
   // 处理WebSocket消息
