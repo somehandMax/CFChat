@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Cloudflare 加密聊天室</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --surface-color: #f5f5f5;
+      --chat-bg: #e5ddd5;
+      --primary-color: #0088cc;
+      --primary-hover: #0077b3;
+      --text-color: #212121;
+      --text-secondary: #707579;
+      --border-color: #dfe1e5;
+      --message-out: #eeffde;
+      --message-in: #ffffff;
+      --shadow: 0 1px 2px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --header-height: 56px;
+      --input-height: 60px;
+    }
+
+    body.dark-mode {
+      --bg-color: #0f1419;
+      --surface-color: #1c252c;
+      --chat-bg: #0f1419;
+      --primary-color: #2ca5e0;
+      --primary-hover: #1d96d1;
+      --text-color: #e0e0e0;
+      --text-secondary: #8a8a8a;
+      --border-color: #2a2f33;
+      --message-out: #2b5278;
+      --message-in: #182533;
+      --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.15);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      height: 100vh;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ================== 登录/入房页面 ================== */
+    .auth-page {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-color);
+      z-index: 100;
+      padding: 24px;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .auth-page.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.98);
+    }
+
+    .auth-logo {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, var(--primary-color), #4fc3f7);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .auth-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-color);
+    }
+
+    .auth-subtitle {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.5;
+    }
+
+    .auth-input-group {
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 16px;
+    }
+
+    .auth-input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .auth-input {
+      width: 100%;
+      height: 52px;
+      padding: 0 16px;
+      font-size: 16px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius);
+      background: var(--surface-color);
+      color: var(--text-color);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .auth-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0,136,204,0.15);
+    }
+
+    .auth-input::placeholder {
+      color: var(--text-secondary);
+      opacity: 0.6;
+    }
+
+    /* 6位数字口令输入 */
+    .code-input-wrapper {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .code-input {
+      width: 48px;
+      height: 56px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius);
+      background: var(--surface-color);
+      color: var(--text-color);
+      outline: none;
+      transition: all 0.2s;
+      caret-color: var(--primary-color);
+    }
+
+    .code-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0,136,204,0.15);
+      transform: translateY(-2px);
+    }
+
+    .code-input.filled {
+      border-color: var(--primary-color);
+      background: rgba(0,136,204,0.05);
+    }
+
+    .auth-btn {
+      width: 100%;
+      max-width: 360px;
+      height: 52px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--primary-color);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .auth-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .auth-btn:active {
+      transform: scale(0.98);
+    }
+
+    .auth-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .auth-link {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--primary-color);
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-decoration: none;
+    }
+
+    .auth-link:hover {
+      text-decoration: underline;
+    }
+
+    .auth-divider {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    /* ================== 聊天主界面 ================== */
+    #chatroom {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #chatroom.active {
+      display: flex;
+    }
+
+    /* 顶部导航栏 */
+    .chat-header {
+      height: var(--header-height);
+      background: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .header-back {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--text-color);
+      transition: background 0.2s;
+    }
+
+    .header-back:hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .header-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-color), #4fc3f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-status {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .header-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--text-color);
+      transition: background 0.2s;
+    }
+
+    .header-btn:hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    /* 聊天消息区域 */
+    #chatlog {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--chat-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 8px 12px;
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+      animation: msgIn 0.2s ease-out;
+    }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.incoming {
+      align-self: flex-start;
+      background: var(--message-in);
+      color: var(--text-color);
+      border-bottom-left-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    .message.outgoing {
+      align-self: flex-end;
+      background: var(--message-out);
+      color: var(--text-color);
+      border-bottom-right-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    .message.system {
+      align-self: center;
+      background: rgba(0,0,0,0.05);
+      color: var(--text-secondary);
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .message .msg-sender {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 2px;
+    }
+
+    .message .msg-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    .message.file-msg {
+      cursor: pointer;
+    }
+
+    .file-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+
+    .file-icon {
+      font-size: 28px;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .file-size {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* 输入区域 */
+    .chat-input-area {
+      height: var(--input-height);
+      background: var(--surface-color);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .input-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--text-secondary);
+      transition: background 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .input-btn:hover {
+      background: rgba(0,0,0,0.05);
+      color: var(--text-color);
+    }
+
+    #chat-input {
+      flex: 1;
+      height: 44px;
+      border: none;
+      border-radius: 22px;
+      padding: 0 16px;
+      font-size: 15px;
+      background: var(--bg-color);
+      color: var(--text-color);
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+
+    #chat-input:focus {
+      box-shadow: 0 0 0 2px rgba(0,136,204,0.2);
+    }
+
+    #send-button {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      background: var(--primary-color);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    #send-button:hover {
+      background: var(--primary-hover);
+    }
+
+    #send-button:active {
+      transform: scale(0.95);
+    }
+
+    /* ================== 用户列表面板 ================== */
+    .roster-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 280px;
+      background: var(--surface-color);
+      border-left: 1px solid var(--border-color);
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .roster-panel.open {
+      transform: translateX(0);
+    }
+
+    .roster-header {
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+    }
+
+    .roster-header h3 {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .roster-close {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .roster-close:hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    #roster-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .roster-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .roster-user:hover {
+      background: rgba(0,0,0,0.04);
+    }
+
+    .roster-user .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .roster-user .user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .roster-user .user-name {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .roster-user .user-role {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .roster-user .owner-badge {
+      font-size: 11px;
+      background: var(--primary-color);
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .roster-user .user-actions {
+      display: none;
+      gap: 4px;
+    }
+
+    .roster-user:hover .user-actions {
+      display: flex;
+    }
+
+    .user-action-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-action-btn:hover {
+      background: rgba(0,0,0,0.08);
+    }
+
+    /* 遮罩层 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ================== 弹窗/提示 ================== */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--surface-color);
+      color: var(--text-color);
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s;
+      border: 1px solid var(--border-color);
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error {
+      border-left: 4px solid #e53935;
+    }
+
+    .toast.success {
+      border-left: 4px solid #43a047;
+    }
+
+    /* 模态框 */
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      position: relative;
+      background: var(--surface-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95);
+      transition: transform 0.2s;
+    }
+
+    .modal.active .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .modal-body {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .modal-btn.secondary {
+      background: transparent;
+      color: var(--text-color);
+    }
+
+    .modal-btn.secondary:hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .modal-btn.primary {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .modal-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .modal-btn.danger {
+      background: #e53935;
+      color: #fff;
+    }
+
+    .modal-btn.danger:hover {
+      background: #c62828;
+    }
+
+    /* 设置面板 */
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+    .settings-label {
+      font-size: 15px;
+    }
+
+    .toggle {
+      width: 48px;
+      height: 28px;
+      background: var(--border-color);
+      border-radius: 14px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle.active {
+      background: var(--primary-color);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    /* 文件传输请求弹窗 */
+    .file-request-toast {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100%);
+      background: var(--surface-color);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: var(--shadow-lg);
+      z-index: 300;
+      width: 90%;
+      max-width: 400px;
+      border: 1px solid var(--border-color);
+      transition: transform 0.3s;
+    }
+
+    .file-request-toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .file-request-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .file-request-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .file-request-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .file-request-actions button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-accept {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .btn-decline {
+      background: var(--border-color);
+      color: var(--text-color);
+    }
+
+    /* 连接状态指示 */
+    .connection-status {
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: #ff9800;
+      color: #fff;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      transform: translateY(-100%);
+      transition: transform 0.3s;
+    }
+
+    .connection-status.show {
+      transform: translateY(0);
+    }
+
+    .connection-status.connected {
+      background: #43a047;
+      transform: translateY(-100%);
+    }
+
+    /* 密码输入框 */
+    .password-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    /* 移动端适配 */
+    @media (max-width: 600px) {
+      .roster-panel {
+        width: 100%;
+        border-left: none;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+
+      .code-input {
+        width: 44px;
+        height: 52px;
+        font-size: 22px;
+      }
+    }
+
+    /* 隐藏的文件输入 */
+    #file-input {
+      display: none;
+    }
+
+    /* 滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ================== 用户名输入页面 ================== -->
+<div class="auth-page" id="name-page">
+  <div class="auth-logo">💬</div>
+  <div class="auth-title">Cloudflare 聊天室</div>
+  <div class="auth-subtitle">端到端加密，无需注册，输入昵称即可开始</div>
+  <div class="auth-input-group">
+    <label>你的昵称</label>
+    <input type="text" class="auth-input" id="name-input" placeholder="输入昵称（最多32字）" maxlength="32">
+  </div>
+  <button class="auth-btn" id="name-submit">开始</button>
+</div>
+
+<!-- ================== 房间选择页面 ================== -->
+<div class="auth-page hidden" id="room-page">
+  <div class="auth-logo">🔐</div>
+  <div class="auth-title">加入房间</div>
+  <div class="auth-subtitle">输入6位数字口令进入已有房间，或创建新房间</div>
+
+  <div class="auth-input-group">
+    <label>房间口令</label>
+    <div class="code-input-wrapper" id="code-wrapper">
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="0">
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="1">
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="2">
+      <span style="font-size:24px;color:var(--text-secondary);align-self:center">-</span>
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="3">
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="4">
+      <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="5">
+    </div>
+  </div>
+
+  <div class="auth-input-group" id="password-group" style="display:none">
+    <label>房间密码（如需要）</label>
+    <input type="password" class="auth-input" id="room-password" placeholder="输入房间密码">
+  </div>
+
+  <button class="auth-btn" id="join-room-btn">进入房间</button>
+
+  <div class="auth-divider">或</div>
+
+  <button class="auth-btn" id="create-room-btn" style="background:var(--surface-color);color:var(--primary-color);border:2px solid var(--primary-color)">创建新房间</button>
+
+  <button class="auth-link" id="back-to-name">← 返回修改昵称</button>
+</div>
+
+<!-- ================== 聊天主界面 ================== -->
+<div id="chatroom">
+  <div class="chat-header">
+    <button class="header-back" id="leave-room" title="离开房间">←</button>
+    <div class="header-avatar" id="room-avatar">🏠</div>
+    <div class="header-info">
+      <div class="header-title" id="room-title-text">房间</div>
+      <div class="header-status" id="room-status">连接中...</div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" id="theme-toggle" title="切换主题">🌙</button>
+      <button class="header-btn" id="settings-btn" title="房间设置">⚙️</button>
+      <button class="header-btn" id="roster-btn" title="在线用户">👥</button>
+    </div>
+  </div>
+
+  <div class="connection-status" id="conn-status">正在重新连接...</div>
+
+  <div id="chatlog"></div>
+
+  <div class="chat-input-area">
+    <button class="input-btn" id="file-btn" title="发送文件">📎</button>
+    <input type="text" id="chat-input" placeholder="输入消息..." autocomplete="off">
+    <button id="send-button">➤</button>
+  </div>
+</div>
+
+<input type="file" id="file-input">
+
+<!-- ================== 用户列表面板 ================== -->
+<div class="overlay" id="roster-overlay"></div>
+<div class="roster-panel" id="roster-panel">
+  <div class="roster-header">
+    <h3>在线用户</h3>
+    <button class="roster-close" id="roster-close">✕</button>
+  </div>
+  <div id="roster-list"></div>
+</div>
+
+<!-- ================== 房间设置模态框 ================== -->
+<div class="modal" id="settings-modal">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-content">
+    <div class="modal-title">房间设置</div>
+    <div class="modal-body">
+      <div class="settings-row">
+        <span class="settings-label">允许新用户加入</span>
+        <div class="toggle active" id="toggle-allow-new"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">房间密码</span>
+        <button class="modal-btn secondary" id="btn-set-password">设置</button>
+      </div>
+      <div id="password-edit-area" style="display:none;margin-top:8px">
+        <input type="password" class="auth-input" id="new-password" placeholder="输入新密码" style="margin-bottom:8px">
+        <div style="display:flex;gap:8px">
+          <button class="modal-btn secondary" id="btn-cancel-password" style="flex:1">取消</button>
+          <button class="modal-btn primary" id="btn-save-password" style="flex:1">保存</button>
+          <button class="modal-btn danger" id="btn-remove-password" style="flex:1">移除</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" data-close-modal>关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================== 通用模态框 ================== -->
+<div class="modal" id="common-modal">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-content">
+    <div class="modal-title" id="common-modal-title">提示</div>
+    <div class="modal-body" id="common-modal-body"></div>
+    <div class="modal-actions" id="common-modal-actions">
+      <button class="modal-btn secondary" data-close-modal>取消</button>
+      <button class="modal-btn primary" id="common-modal-confirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================== 文件传输请求提示 ================== -->
+<div class="file-request-toast" id="file-request-toast">
+  <div class="file-request-header" id="file-request-header">文件传输请求</div>
+  <div class="file-request-meta" id="file-request-meta"></div>
+  <div class="file-request-actions">
+    <button class="btn-decline" id="file-decline">拒绝</button>
+    <button class="btn-accept" id="file-accept">接收</button>
+  </div>
+</div>
+
+<!-- ================== Toast提示 ================== -->
+<div class="toast" id="toast"></div>
+
+<!-- ================== JavaScript ================== -->
+<script>
+// ===============================
+// 全局状态
+// ===============================
+let currentWebSocket = null;
+let username = '';
+let roomCode = '';
+let sessionId = null;
+let isOwner = false;
+let ownerId = null;
+let userOrder = [];
+let aesKey = null;
+let roomSettings = { passwordHash: null, allowNewUsers: true };
+let reconnectAttempts = 0;
+let isReconnecting = false;
+let fileTransferState = null;
+
+const hostname = window.location.host || 'localhost';
+const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+// ===============================
+// AES-256 加密/解密工具 (Web Crypto API)
+// ===============================
+const CryptoUtils = {
+  async importKey(base64Key) {
+    const raw = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+    return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  },
+
+  async encrypt(text, base64Key) {
+    const key = await this.importKey(base64Key);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  },
+
+  async decrypt(base64Ciphertext, base64Key) {
+    const key = await this.importKey(base64Key);
+    const combined = Uint8Array.from(atob(base64Ciphertext), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+  },
+
+  // MD5 简单实现（用于密码哈希）
+  async md5(message) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const hashBuffer = await crypto.subtle.digest('MD5', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+};
+
+// ===============================
+// DOM 元素引用
+// ===============================
+const $ = id => document.getElementById(id);
+const namePage = $('name-page');
+const roomPage = $('room-page');
+const nameInput = $('name-input');
+const nameSubmit = $('name-submit');
+const codeInputs = document.querySelectorAll('.code-input');
+const joinRoomBtn = $('join-room-btn');
+const createRoomBtn = $('create-room-btn');
+const backToName = $('back-to-name');
+const roomPassword = $('room-password');
+const passwordGroup = $('password-group');
+const chatroom = $('chatroom');
+const chatlog = $('chatlog');
+const chatInput = $('chat-input');
+const sendButton = $('send-button');
+const rosterPanel = $('roster-panel');
+const rosterOverlay = $('roster-overlay');
+const rosterList = $('roster-list');
+const rosterBtn = $('roster-btn');
+const rosterClose = $('roster-close');
+const themeToggle = $('theme-toggle');
+const settingsBtn = $('settings-btn');
+const settingsModal = $('settings-modal');
+const leaveRoom = $('leave-room');
+const connStatus = $('conn-status');
+const toast = $('toast');
+const fileInput = $('file-input');
+const fileBtn = $('file-btn');
+const fileRequestToast = $('file-request-toast');
+const roomTitleText = $('room-title-text');
+const roomStatus = $('room-status');
+
+// ===============================
+// 初始化
+// ===============================
+function init() {
+  if (isDarkMode) {
+    document.body.classList.add('dark-mode');
+    themeToggle.textContent = '☀️';
+  }
+
+  nameInput.focus();
+
+  // 检查URL hash
+  const hash = location.hash.slice(1);
+  if (/^\d{6}$/.test(hash)) {
+    roomCode = hash;
+    // 直接显示房间页面并填入口令
+    setTimeout(() => {
+      namePage.classList.add('hidden');
+      roomPage.classList.remove('hidden');
+      fillCodeInputs(roomCode);
+      passwordGroup.style.display = 'block';
+    }, 100);
+  }
+}
+
+// ===============================
+// 页面切换逻辑
+// ===============================
+nameSubmit.addEventListener('click', () => {
+  username = nameInput.value.trim();
+  if (!username) {
+    showToast('请输入昵称', 'error');
+    return;
+  }
+  if (username.length > 32) {
+    showToast('昵称过长', 'error');
+    return;
+  }
+  namePage.classList.add('hidden');
+  roomPage.classList.remove('hidden');
+  setTimeout(() => codeInputs[0].focus(), 100);
+});
+
+backToName.addEventListener('click', () => {
+  roomPage.classList.add('hidden');
+  namePage.classList.remove('hidden');
+  nameInput.focus();
+});
+
+// ===============================
+// 6位数字口令输入处理
+// ===============================
+function fillCodeInputs(code) {
+  codeInputs.forEach((input, i) => {
+    input.value = code[i] || '';
+    input.classList.toggle('filled', !!input.value);
+  });
+}
+
+function getCodeFromInputs() {
+  return Array.from(codeInputs).map(i => i.value).join('');
+}
+
+codeInputs.forEach((input, index) => {
+  input.addEventListener('input', (e) => {
+    const val = e.target.value;
+    // 仅允许数字
+    if (!/^\d*$/.test(val)) {
+      e.target.value = val.replace(/\D/g, '');
+      return;
+    }
+    if (val.length === 1) {
+      e.target.classList.add('filled');
+      if (index < codeInputs.length - 1) {
+        codeInputs[index + 1].focus();
+      }
+    } else if (val.length === 0) {
+      e.target.classList.remove('filled');
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !e.target.value && index > 0) {
+      codeInputs[index - 1].focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      codeInputs[index - 1].focus();
+    }
+    if (e.key === 'ArrowRight' && index < codeInputs.length - 1) {
+      codeInputs[index + 1].focus();
+    }
+  });
+
+  input.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    fillCodeInputs(paste);
+    const nextIndex = Math.min(paste.length, 5);
+    codeInputs[nextIndex].focus();
+  });
+});
+
+// ===============================
+// 加入/创建房间
+// ===============================
+joinRoomBtn.addEventListener('click', async () => {
+  const code = getCodeFromInputs();
+  if (!/^\d{6}$/.test(code)) {
+    showToast('请输入完整的6位数字口令', 'error');
+    return;
+  }
+  roomCode = code;
+  passwordGroup.style.display = 'block';
+
+  // 如果有密码，先让用户输入
+  const pwd = roomPassword.value.trim();
+  let passwordHash = null;
+  if (pwd) {
+    passwordHash = await CryptoUtils.md5(pwd);
+  }
+
+  startChat(passwordHash);
+});
+
+createRoomBtn.addEventListener('click', async () => {
+  // 生成6位随机数字
+  roomCode = String(Math.floor(100000 + Math.random() * 900000));
+  fillCodeInputs(roomCode);
+  showToast(`新房间口令：${roomCode.slice(0,3)}-${roomCode.slice(3)}`, 'success');
+  passwordGroup.style.display = 'none';
+  startChat(null);
+});
+
+// ===============================
+// WebSocket 连接与聊天逻辑
+// ===============================
+async function startChat(passwordHash) {
+  roomPage.classList.add('hidden');
+  chatroom.classList.add('active');
+  document.location.hash = roomCode;
+
+  roomTitleText.textContent = `房间 ${roomCode.slice(0,3)}-${roomCode.slice(3)}`;
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  $('chatroom').addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage();
+  });
+
+  await join(passwordHash);
+}
+
+async function join(passwordHash) {
+  const wss = location.protocol === 'http:' ? 'ws://' : 'wss://';
+  const wsUrl = `${wss}${hostname}/api/room/${roomCode}/websocket`;
+
+  showConnStatus('连接中...', true);
+
+  try {
+    const ws = new WebSocket(wsUrl);
+    currentWebSocket = ws;
+
+    ws.addEventListener('open', async () => {
+      reconnectAttempts = 0;
+      isReconnecting = false;
+      showConnStatus('', false);
+      roomStatus.textContent = '已连接';
+
+      // 发送入房请求
+      ws.send(JSON.stringify({
+        type: 'join',
+        name: username,
+        roomCode: roomCode,
+        passwordHash: passwordHash
+      }));
+    });
+
+    ws.addEventListener('message', async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        await handleWsMessage(data, ws);
+      } catch (e) {
+        console.error('消息解析错误:', e);
+      }
+    });
+
+    ws.addEventListener('close', (e) => {
+      roomStatus.textContent = '已断开';
+      if (!isReconnecting) {
+        scheduleReconnect(passwordHash);
+      }
+    });
+
+    ws.addEventListener('error', (e) => {
+      console.error('WebSocket error:', e);
+      roomStatus.textContent = '连接错误';
+    });
+  } catch (e) {
+    console.error('连接失败:', e);
+    scheduleReconnect(passwordHash);
+  }
+}
+
+function scheduleReconnect(passwordHash) {
+  if (isReconnecting) return;
+  isReconnecting = true;
+
+  reconnectAttempts++;
+  const delay = Math.min(10000, reconnectAttempts * 2000);
+
+  showConnStatus(`连接断开，${delay/1000}秒后重连...`, true);
+
+  setTimeout(() => {
+    isReconnecting = false;
+    join(passwordHash);
+  }, delay);
+}
+
+// ===============================
+// WebSocket 消息处理
+// ===============================
+async function handleWsMessage(data, ws) {
+  // 错误处理
+  if (data.error) {
+    showToast(data.error, 'error');
+    if (data.errorCode === 1003 || data.errorCode === 1004) {
+      // 被拉黑或房间关闭，返回房间页
+      setTimeout(() => location.reload(), 2000);
+    }
+    return;
+  }
+
+  switch (data.type) {
+    case 'ready': {
+      if (data.sessionId) {
+        sessionId = data.sessionId;
+        localStorage.setItem('sessionId', sessionId);
+      }
+      showToast('成功加入房间', 'success');
+      break;
+    }
+
+    case 'roomState': {
+      ownerId = data.ownerId;
+      userOrder = data.userOrder || [];
+      aesKey = data.aesKey;
+      roomSettings = data.settings || roomSettings;
+      sessionId = getSessionIdFromWs();
+      isOwner = sessionId === ownerId;
+      updateRoster();
+      break;
+    }
+
+    case 'userJoined': {
+      userOrder = data.userOrder || userOrder;
+      ownerId = data.ownerId || ownerId;
+      updateRoster();
+      addSystemMessage(`${data.name} 加入了房间`);
+      break;
+    }
+
+    case 'userQuit': {
+      userOrder = data.userOrder || userOrder;
+      ownerId = data.ownerId || ownerId;
+      updateRoster();
+      addSystemMessage(`${data.name} 离开了房间`);
+      break;
+    }
+
+    case 'ownerChanged': {
+      ownerId = data.newOwnerId;
+      userOrder = data.userOrder || userOrder;
+      const newOwner = userOrder.find(u => u.sessionId === ownerId);
+      if (newOwner) {
+        addSystemMessage(`${newOwner.name} 成为新房主`);
+      }
+      isOwner = sessionId === ownerId;
+      updateRoster();
+      break;
+    }
+
+    case 'settingsUpdated': {
+      roomSettings = data.settings;
+      showToast('房间设置已更新', 'success');
+      break;
+    }
+
+    case 'chat': {
+      const isMe = data.sessionId === sessionId;
+      const time = new Date(data.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      // 尝试解密消息
+      let displayMsg = data.message;
+      if (aesKey && displayMsg.startsWith('ENC:')) {
+        try {
+          const cipher = displayMsg.slice(4);
+          displayMsg = await CryptoUtils.decrypt(cipher, aesKey);
+        } catch (e) {
+          displayMsg = '[无法解密]';
+        }
+      }
+
+      addChatMessage(data.name, displayMsg, isMe, time);
+      break;
+    }
+
+    case 'kicked': {
+      showToast('您已被房主踢出房间', 'error');
+      setTimeout(() => location.reload(), 2000);
+      break;
+    }
+
+    case 'blacklisted': {
+      showToast('您已被房主拉黑', 'error');
+      setTimeout(() => location.reload(), 2000);
+      break;
+    }
+
+    case 'fileRequest': {
+      showFileRequest(data);
+      break;
+    }
+
+    case 'fileResponse': {
+      handleFileResponse(data);
+      break;
+    }
+
+    case 'fileChunk': {
+      handleFileChunk(data);
+      break;
+    }
+
+    case 'fileStatus': {
+      handleFileStatus(data);
+      break;
+    }
+
+    // 兼容旧格式
+    default: {
+      if (data.joined) {
+        addSystemMessage(`${data.joined} 加入了房间`);
+      } else if (data.quit) {
+        addSystemMessage(`${data.quit} 离开了房间`);
+      } else if (data.name && data.message) {
+        const isMe = data.name === username;
+        const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+        addChatMessage(data.name, data.message, isMe, time);
+      }
+    }
+  }
+}
+
+function getSessionIdFromWs() {
+  // sessionId 由服务端分配，通过 ready 消息同步
+  if (!sessionId) {
+    sessionId = localStorage.getItem('sessionId');
+  }
+  return sessionId;
+}
+
+// ===============================
+// 消息发送
+// ===============================
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text || !currentWebSocket) return;
+
+  let payload = text;
+  // 加密消息
+  if (aesKey) {
+    try {
+      const encrypted = await CryptoUtils.encrypt(text, aesKey);
+      payload = 'ENC:' + encrypted;
+    } catch (e) {
+      console.error('加密失败:', e);
+    }
+  }
+
+  currentWebSocket.send(JSON.stringify({
+    type: 'chat',
+    message: payload
+  }));
+
+  chatInput.value = '';
+  chatInput.focus();
+}
+
+sendButton.addEventListener('click', (e) => {
+  e.preventDefault();
+  sendMessage();
+});
+
+// ===============================
+// 聊天消息渲染
+// ===============================
+function addChatMessage(name, text, isOutgoing, timeStr) {
+  const div = document.createElement('div');
+  div.className = `message ${isOutgoing ? 'outgoing' : 'incoming'}`;
+
+  if (!isOutgoing) {
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.textContent = name;
+    div.appendChild(sender);
+  }
+
+  const content = document.createElement('div');
+  content.textContent = text;
+  div.appendChild(content);
+
+  if (timeStr) {
+    const time = document.createElement('div');
+    time.className = 'msg-time';
+    time.textContent = timeStr;
+    div.appendChild(time);
+  }
+
+  chatlog.appendChild(div);
+  scrollToBottom();
+}
+
+function addSystemMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'message system';
+  div.textContent = text;
+  chatlog.appendChild(div);
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  chatlog.scrollTop = chatlog.scrollHeight;
+}
+
+// ===============================
+// 用户列表
+// ===============================
+function updateRoster() {
+  rosterList.innerHTML = '';
+
+  userOrder.forEach(user => {
+    const isUserOwner = user.sessionId === ownerId;
+    const isSelf = user.sessionId === sessionId;
+
+    const div = document.createElement('div');
+    div.className = 'roster-user';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'user-avatar';
+    avatar.textContent = user.name.charAt(0).toUpperCase();
+
+    const info = document.createElement('div');
+    info.className = 'user-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'user-name';
+    nameEl.textContent = user.name + (isSelf ? ' (你)' : '');
+
+    const roleEl = document.createElement('div');
+    roleEl.className = 'user-role';
+    roleEl.textContent = isUserOwner ? '房主' : '成员';
+
+    info.appendChild(nameEl);
+    info.appendChild(roleEl);
+
+    div.appendChild(avatar);
+    div.appendChild(info);
+
+    if (isUserOwner) {
+      const badge = document.createElement('span');
+      badge.className = 'owner-badge';
+      badge.textContent = '房主';
+      div.appendChild(badge);
+    }
+
+    // 房主操作按钮
+    if (isOwner && !isSelf) {
+      const actions = document.createElement('div');
+      actions.className = 'user-actions';
+
+      const kickBtn = document.createElement('button');
+      kickBtn.className = 'user-action-btn';
+      kickBtn.title = '踢出';
+      kickBtn.textContent = '🚫';
+      kickBtn.onclick = () => kickUser(user.sessionId, user.name);
+
+      const blacklistBtn = document.createElement('button');
+      blacklistBtn.className = 'user-action-btn';
+      blacklistBtn.title = '拉黑';
+      blacklistBtn.textContent = '⛔';
+      blacklistBtn.onclick = () => blacklistUser(user.sessionId, user.name);
+
+      const transferBtn = document.createElement('button');
+      transferBtn.className = 'user-action-btn';
+      transferBtn.title = '转让房主';
+      transferBtn.textContent = '👑';
+      transferBtn.onclick = () => transferOwner(user.sessionId, user.name);
+
+      actions.appendChild(transferBtn);
+      actions.appendChild(kickBtn);
+      actions.appendChild(blacklistBtn);
+      div.appendChild(actions);
+    }
+
+    rosterList.appendChild(div);
+  });
+}
+
+function kickUser(targetSessionId, targetName) {
+  showConfirm(`确定要将 ${targetName} 踢出房间吗？`, () => {
+    currentWebSocket.send(JSON.stringify({
+      type: 'kick',
+      targetSessionId
+    }));
+  });
+}
+
+function blacklistUser(targetSessionId, targetName) {
+  showConfirm(`确定要将 ${targetName} 拉黑吗？拉黑后该用户将无法再次进入此房间。`, () => {
+    currentWebSocket.send(JSON.stringify({
+      type: 'blacklist',
+      action: 'add',
+      targetSessionId
+    }));
+  });
+}
+
+function transferOwner(targetSessionId, targetName) {
+  showConfirm(`确定要将房主转让给 ${targetName} 吗？`, () => {
+    currentWebSocket.send(JSON.stringify({
+      type: 'transferOwner',
+      targetSessionId
+    }));
+  });
+}
+
+// ===============================
+// 房主设置
+// ===============================
+settingsBtn.addEventListener('click', () => {
+  if (!isOwner) {
+    showToast('仅房主可修改房间设置', 'error');
+    return;
+  }
+  openModal(settingsModal);
+});
+
+const toggleAllowNew = $('toggle-allow-new');
+toggleAllowNew.classList.toggle('active', roomSettings.allowNewUsers !== false);
+toggleAllowNew.addEventListener('click', () => {
+  const newVal = !toggleAllowNew.classList.contains('active');
+  toggleAllowNew.classList.toggle('active', newVal);
+  currentWebSocket.send(JSON.stringify({
+    type: 'updateSettings',
+    settings: { allowNewUsers: newVal }
+  }));
+});
+
+$('btn-set-password').addEventListener('click', () => {
+  $('password-edit-area').style.display = 'block';
+});
+
+$('btn-cancel-password').addEventListener('click', () => {
+  $('password-edit-area').style.display = 'none';
+});
+
+$('btn-save-password').addEventListener('click', async () => {
+  const pwd = $('new-password').value.trim();
+  if (!pwd) {
+    showToast('请输入密码', 'error');
+    return;
+  }
+  const hash = await CryptoUtils.md5(pwd);
+  currentWebSocket.send(JSON.stringify({
+    type: 'updateSettings',
+    settings: { passwordHash: hash }
+  }));
+  $('password-edit-area').style.display = 'none';
+  $('new-password').value = '';
+  showToast('密码已设置', 'success');
+});
+
+$('btn-remove-password').addEventListener('click', () => {
+  currentWebSocket.send(JSON.stringify({
+    type: 'updateSettings',
+    settings: { passwordHash: null }
+  }));
+  $('password-edit-area').style.display = 'none';
+  showToast('密码已移除', 'success');
+});
+
+// ===============================
+// 文件传输
+// ===============================
+fileBtn.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // 选择接收者
+  const recipients = userOrder.filter(u => u.sessionId !== sessionId);
+  if (recipients.length === 0) {
+    showToast('房间内没有其他用户', 'error');
+    return;
+  }
+
+  // 简化：发送给第一个其他用户，或弹出选择
+  const target = recipients[0];
+
+  // 生成文件传输密钥
+  const fileKeyArr = new Uint8Array(32);
+  crypto.getRandomValues(fileKeyArr);
+  const fileKey = btoa(String.fromCharCode(...fileKeyArr));
+
+  // 读取并加密文件（分片）
+  const chunkSize = 1024 * 1024; // 1MB
+  const totalChunks = Math.ceil(file.size / chunkSize);
+
+  const fileMeta = {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    totalChunks,
+    key: fileKey
+  };
+
+  // 发送传输请求
+  currentWebSocket.send(JSON.stringify({
+    type: 'fileRequest',
+    targetSessionId: target.sessionId,
+    fileMeta
+  }));
+
+  fileTransferState = {
+    targetSessionId: target.sessionId,
+    file,
+    fileMeta,
+    fileKey,
+    chunkSize,
+    totalChunks,
+    accepted: false
+  };
+
+  showToast(`已向 ${target.name} 发送文件传输请求`, 'success');
+  fileInput.value = '';
+});
+
+function showFileRequest(data) {
+  const toast = fileRequestToast;
+  $('file-request-header').textContent = `${data.fromName} 想发送文件`;
+  $('file-request-meta').textContent = `${data.fileMeta.name} (${formatFileSize(data.fileMeta.size)})`;
+
+  toast.classList.add('show');
+
+  $('file-accept').onclick = () => {
+    toast.classList.remove('show');
+    currentWebSocket.send(JSON.stringify({
+      type: 'fileResponse',
+      targetSessionId: data.fromSessionId,
+      accepted: true,
+      fileMeta: data.fileMeta
+    }));
+
+    // 准备接收
+    fileTransferState = {
+      fromSessionId: data.fromSessionId,
+      fileMeta: data.fileMeta,
+      chunks: [],
+      receivedChunks: 0
+    };
+    showToast('开始接收文件...', 'success');
+  };
+
+  $('file-decline').onclick = () => {
+    toast.classList.remove('show');
+    currentWebSocket.send(JSON.stringify({
+      type: 'fileResponse',
+      targetSessionId: data.fromSessionId,
+      accepted: false,
+      fileMeta: data.fileMeta
+    }));
+  };
+}
+
+function handleFileResponse(data) {
+  if (!fileTransferState) return;
+  if (data.accepted) {
+    fileTransferState.accepted = true;
+    showToast('对方已接受，开始传输...', 'success');
+    sendFileChunks();
+  } else {
+    showToast('对方拒绝了文件传输', 'error');
+    fileTransferState = null;
+  }
+}
+
+async function sendFileChunks() {
+  const state = fileTransferState;
+  if (!state || !state.accepted) return;
+
+  const { file, fileKey, chunkSize, totalChunks, targetSessionId } = state;
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const chunk = file.slice(start, end);
+    const arrayBuffer = await chunk.arrayBuffer();
+
+    // 加密分片
+    const key = await CryptoUtils.importKey(fileKey);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, arrayBuffer);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    const base64Chunk = btoa(String.fromCharCode(...combined));
+
+    currentWebSocket.send(JSON.stringify({
+      type: 'fileChunk',
+      targetSessionId,
+      chunkIndex: i,
+      totalChunks,
+      chunkData: base64Chunk
+    }));
+  }
+
+  currentWebSocket.send(JSON.stringify({
+    type: 'fileStatus',
+    targetSessionId,
+    status: 'completed',
+    fileMeta: state.fileMeta
+  }));
+
+  showToast('文件传输完成', 'success');
+  fileTransferState = null;
+}
+
+async function handleFileChunk(data) {
+  if (!fileTransferState || fileTransferState.fromSessionId !== data.fromSessionId) return;
+
+  const state = fileTransferState;
+  const combined = Uint8Array.from(atob(data.chunkData), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const ciphertext = combined.slice(12);
+
+  try {
+    const key = await CryptoUtils.importKey(state.fileMeta.key);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    state.chunks[data.chunkIndex] = decrypted;
+    state.receivedChunks++;
+
+    if (state.receivedChunks === data.totalChunks) {
+      // 合并文件
+      const totalSize = state.chunks.reduce((sum, c) => sum + c.byteLength, 0);
+      const merged = new Uint8Array(totalSize);
+      let offset = 0;
+      for (let i = 0; i < state.chunks.length; i++) {
+        merged.set(new Uint8Array(state.chunks[i]), offset);
+        offset += state.chunks[i].byteLength;
+      }
+
+      const blob = new Blob([merged], { type: state.fileMeta.type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = state.fileMeta.name;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showToast(`文件 ${state.fileMeta.name} 接收完成`, 'success');
+      fileTransferState = null;
+    }
+  } catch (e) {
+    console.error('解密分片失败:', e);
+    showToast('文件接收失败', 'error');
+  }
+}
+
+function handleFileStatus(data) {
+  if (data.status === 'completed') {
+    showToast('文件传输完成', 'success');
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ===============================
+// UI 交互
+// ===============================
+rosterBtn.addEventListener('click', () => {
+  rosterPanel.classList.add('open');
+  rosterOverlay.classList.add('active');
+});
+
+rosterClose.addEventListener('click', closeRoster);
+rosterOverlay.addEventListener('click', closeRoster);
+
+function closeRoster() {
+  rosterPanel.classList.remove('open');
+  rosterOverlay.classList.remove('active');
+}
+
+themeToggle.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const dark = document.body.classList.contains('dark-mode');
+  themeToggle.textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('darkMode', dark);
+});
+
+leaveRoom.addEventListener('click', () => {
+  showConfirm('确定要离开房间吗？', () => {
+    if (currentWebSocket) {
+      currentWebSocket.close();
+    }
+    location.hash = '';
+    location.reload();
+  });
+});
+
+// ===============================
+// 模态框通用逻辑
+// ===============================
+function openModal(modal) {
+  modal.classList.add('active');
+}
+
+function closeModal(modal) {
+  modal.classList.remove('active');
+}
+
+document.querySelectorAll('[data-close-modal]').forEach(el => {
+  el.addEventListener('click', () => {
+    const modal = el.closest('.modal');
+    if (modal) closeModal(modal);
+  });
+});
+
+function showConfirm(message, onConfirm) {
+  $('common-modal-title').textContent = '确认';
+  $('common-modal-body').textContent = message;
+  const confirmBtn = $('common-modal-confirm');
+
+  confirmBtn.onclick = () => {
+    closeModal($('common-modal'));
+    onConfirm();
+  };
+
+  openModal($('common-modal'));
+}
+
+// ===============================
+// Toast 提示
+// ===============================
+let toastTimer = null;
+function showToast(message, type = '') {
+  toast.textContent = message;
+  toast.className = 'toast show ' + type;
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+// ===============================
+// 连接状态提示
+// ===============================
+function showConnStatus(text, show) {
+  connStatus.textContent = text;
+  connStatus.classList.toggle('show', show);
+}
+
+// ===============================
+// 启动
+// ===============================
+init();
+</script>
+</body>
+</html>
