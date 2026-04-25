@@ -824,7 +824,7 @@
       position: fixed;
       top: 72px;
       left: 50%;
-      transform: translateX(-50%) translateY(-120%);
+      transform: translateX(-50%) translateY(-20px);
       background: var(--surface-color);
       border-radius: var(--radius-lg);
       padding: 16px;
@@ -833,11 +833,17 @@
       width: 90%;
       max-width: 400px;
       border: 1px solid var(--border-color);
-      transition: transform 0.3s;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+      pointer-events: none;
     }
 
     .file-request-toast.show {
+      opacity: 1;
+      visibility: visible;
       transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
     }
 
     .file-request-header {
@@ -1080,6 +1086,7 @@ let roomSettings = { passwordHash: null, allowNewUsers: true };
 let reconnectAttempts = 0;
 let isReconnecting = false;
 let fileTransferState = null;
+let fileRequestTimer = null;
 
 const hostname = window.location.host || 'localhost';
 const isDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -1791,6 +1798,15 @@ fileInput.addEventListener('change', async (e) => {
   fileInput.value = '';
 });
 
+function hideFileRequest() {
+  const toast = fileRequestToast;
+  toast.classList.remove('show');
+  if (fileRequestTimer) {
+    clearTimeout(fileRequestTimer);
+    fileRequestTimer = null;
+  }
+}
+
 function showFileRequest(data) {
   const toast = fileRequestToast;
   $('file-request-header').textContent = `${data.fromName} 想发送文件`;
@@ -1798,8 +1814,14 @@ function showFileRequest(data) {
 
   toast.classList.add('show');
 
-  $('file-accept').onclick = () => {
+  // 30秒后自动关闭
+  if (fileRequestTimer) clearTimeout(fileRequestTimer);
+  fileRequestTimer = setTimeout(() => {
     toast.classList.remove('show');
+  }, 30000);
+
+  $('file-accept').onclick = () => {
+    hideFileRequest();
     currentWebSocket.send(JSON.stringify({
       type: 'fileResponse',
       targetSessionId: data.fromSessionId,
@@ -1817,7 +1839,7 @@ function showFileRequest(data) {
   };
 
   $('file-decline').onclick = () => {
-    toast.classList.remove('show');
+    hideFileRequest();
     currentWebSocket.send(JSON.stringify({
       type: 'fileResponse',
       targetSessionId: data.fromSessionId,
