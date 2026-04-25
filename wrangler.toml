@@ -1,0 +1,24 @@
+name = "max-chat-room"
+compatibility_date = "2026-02-07"
+
+main = "src/chat.mjs"
+
+[vars]
+ADMIN_SECRET_KEY = "019c3883-e31d-740e-b99c-d662394a0075"
+ALL_ROOM_NAMES = "general,my-private-room,public-chat"
+
+[durable_objects]
+bindings = [
+  { name = "rooms", class_name = "ChatRoom" },
+  { name = "limiters", class_name = "RateLimiter" },
+]
+
+[[rules]]
+type = "Data"
+globs = ["**/*.html"]
+fallthrough = false
+
+# Indicate that you want the ChatRoom and RateLimiter classes to be callable as Durable Objects.
+[[migrations]]
+tag = "v1"                                       # Should be unique for each entry
+new_sqlite_classes = ["ChatRoom", "RateLimiter"]
