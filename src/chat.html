@@ -819,53 +819,103 @@
       transform: translateX(20px);
     }
 
-    /* 文件传输请求弹窗 */
-    .file-request-toast {
+    /* 文件传输选择用户弹窗 */
+    .file-recipient-modal {
       position: fixed;
-      top: 72px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-20px);
-      background: var(--surface-color);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-      box-shadow: var(--shadow-lg);
-      z-index: 300;
-      width: 90%;
-      max-width: 400px;
-      border: 1px solid var(--border-color);
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
       opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
       pointer-events: none;
+      transition: opacity 0.2s;
     }
 
-    .file-request-toast.show {
+    .file-recipient-modal.active {
       opacity: 1;
-      visibility: visible;
-      transform: translateX(-50%) translateY(0);
       pointer-events: auto;
     }
 
-    .file-request-header {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 8px;
+    .file-recipient-content {
+      position: relative;
+      background: var(--surface-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      width: 90%;
+      max-width: 360px;
+      box-shadow: var(--shadow-lg);
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
     }
 
-    .file-request-meta {
+    .file-recipient-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .file-recipient-subtitle {
       font-size: 13px;
       color: var(--text-secondary);
       margin-bottom: 12px;
     }
 
-    .file-request-actions {
+    .file-recipient-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    .file-recipient-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .file-recipient-item:hover {
+      background: rgba(0,0,0,0.04);
+    }
+
+    .file-recipient-checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--primary-color);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .file-recipient-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .file-recipient-name {
+      font-size: 15px;
+      flex: 1;
+    }
+
+    .file-recipient-actions {
       display: flex;
       gap: 8px;
     }
 
-    .file-request-actions button {
+    .file-recipient-actions button {
       flex: 1;
-      padding: 8px;
+      padding: 10px;
       border: none;
       border-radius: var(--radius);
       font-size: 14px;
@@ -873,12 +923,72 @@
       cursor: pointer;
     }
 
-    .btn-accept {
+    /* 接收文件提示条（在输入框上方） */
+    .file-incoming-bar {
+      position: absolute;
+      bottom: var(--input-height);
+      left: 0;
+      right: 0;
+      background: var(--surface-color);
+      border-top: 1px solid var(--border-color);
+      padding: 10px 16px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+    }
+
+    .file-incoming-bar.show {
+      display: flex;
+    }
+
+    .file-incoming-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .file-incoming-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-incoming-from {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .file-incoming-detail {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-incoming-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .file-incoming-actions button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-accept-mini {
       background: var(--primary-color);
       color: #fff;
     }
 
-    .btn-decline {
+    .btn-decline-mini {
       background: var(--border-color);
       color: var(--text-color);
     }
@@ -993,24 +1103,41 @@
 
   <div id="chatlog"></div>
 
+  <!-- 接收文件提示条 -->
+  <div class="file-incoming-bar" id="file-incoming-bar">
+    <div class="file-incoming-icon">📎</div>
+    <div class="file-incoming-info">
+      <div class="file-incoming-from" id="file-incoming-from"></div>
+      <div class="file-incoming-detail" id="file-incoming-detail"></div>
+    </div>
+    <div class="file-incoming-actions">
+      <button class="btn-decline-mini" id="file-decline-mini">拒绝</button>
+      <button class="btn-accept-mini" id="file-accept-mini">接收</button>
+    </div>
+  </div>
+
   <div class="chat-input-area">
     <button class="input-btn" id="file-btn" title="发送文件">📎</button>
     <input type="text" id="chat-input" placeholder="输入消息..." autocomplete="off">
     <button id="send-button">➤</button>
   </div>
-
-  <!-- 文件传输请求提示 -->
-  <div class="file-request-toast" id="file-request-toast">
-    <div class="file-request-header" id="file-request-header">文件传输请求</div>
-    <div class="file-request-meta" id="file-request-meta"></div>
-    <div class="file-request-actions">
-      <button class="btn-decline" id="file-decline">拒绝</button>
-      <button class="btn-accept" id="file-accept">接收</button>
-    </div>
-  </div>
 </div>
 
 <input type="file" id="file-input">
+
+<!-- 文件传输选择用户弹窗 -->
+<div class="file-recipient-modal" id="file-recipient-modal">
+  <div class="modal-backdrop" id="file-recipient-backdrop"></div>
+  <div class="file-recipient-content">
+    <div class="file-recipient-title">选择接收人</div>
+    <div class="file-recipient-subtitle" id="file-recipient-fileinfo"></div>
+    <div class="file-recipient-list" id="file-recipient-list"></div>
+    <div class="file-recipient-actions">
+      <button class="modal-btn secondary" id="file-recipient-cancel">取消</button>
+      <button class="modal-btn primary" id="file-recipient-confirm">发送</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================== 用户列表面板 ================== -->
 <div class="overlay" id="roster-overlay"></div>
@@ -1159,7 +1286,12 @@ const leaveRoom = $('leave-room');
 const toast = $('toast');
 const fileInput = $('file-input');
 const fileBtn = $('file-btn');
-const fileRequestToast = $('file-request-toast');
+const fileIncomingBar = $('file-incoming-bar');
+const fileIncomingFrom = $('file-incoming-from');
+const fileIncomingDetail = $('file-incoming-detail');
+const fileRecipientModal = $('file-recipient-modal');
+const fileRecipientList = $('file-recipient-list');
+const fileRecipientFileinfo = $('file-recipient-fileinfo');
 const roomTitleText = $('room-title-text');
 
 
@@ -1476,7 +1608,7 @@ async function handleWsMessage(data, ws) {
     }
 
     case 'fileRequest': {
-      showFileRequest(data);
+      showFileIncoming(data);
       break;
     }
 
@@ -1747,6 +1879,10 @@ $('btn-remove-password').addEventListener('click', () => {
 // ===============================
 // 文件传输
 // ===============================
+let pendingFile = null;
+let pendingFileMeta = null;
+let pendingFileKey = null;
+
 fileBtn.addEventListener('click', () => {
   fileInput.click();
 });
@@ -1758,11 +1894,11 @@ fileInput.addEventListener('change', async (e) => {
   const recipients = userOrder.filter(u => u.sessionId !== sessionId);
   if (recipients.length === 0) {
     showToast('房间内没有其他用户', 'error');
+    fileInput.value = '';
     return;
   }
 
-  const target = recipients[0];
-
+  // 生成文件密钥
   const fileKeyArr = new Uint8Array(32);
   crypto.getRandomValues(fileKeyArr);
   const fileKey = btoa(String.fromCharCode(...fileKeyArr));
@@ -1778,50 +1914,130 @@ fileInput.addEventListener('change', async (e) => {
     key: fileKey
   };
 
-  currentWebSocket.send(JSON.stringify({
-    type: 'fileRequest',
-    targetSessionId: target.sessionId,
-    fileMeta
-  }));
+  pendingFile = file;
+  pendingFileMeta = fileMeta;
+  pendingFileKey = fileKey;
 
-  fileTransferState = {
-    targetSessionId: target.sessionId,
-    file,
-    fileMeta,
-    fileKey,
-    chunkSize,
-    totalChunks,
-    accepted: false
-  };
+  // 如果只有一个接收人，直接发送
+  if (recipients.length === 1) {
+    sendFileRequest(recipients[0].sessionId, fileMeta);
+    fileInput.value = '';
+    return;
+  }
 
-  showToast(`已向 ${target.name} 发送文件传输请求`, 'success');
+  // 多个接收人，显示选择弹窗
+  showFileRecipientModal(recipients, fileMeta);
   fileInput.value = '';
 });
 
-function hideFileRequest() {
-  const toast = fileRequestToast;
-  toast.classList.remove('show');
+function showFileRecipientModal(recipients, fileMeta) {
+  fileRecipientFileinfo.textContent = `${fileMeta.name} (${formatFileSize(fileMeta.size)})`;
+  fileRecipientList.innerHTML = '';
+
+  recipients.forEach(user => {
+    const item = document.createElement('label');
+    item.className = 'file-recipient-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'file-recipient-checkbox';
+    checkbox.value = user.sessionId;
+    checkbox.dataset.name = user.name;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'file-recipient-avatar';
+    avatar.textContent = user.name.charAt(0).toUpperCase();
+
+    const name = document.createElement('span');
+    name.className = 'file-recipient-name';
+    name.textContent = user.name;
+
+    item.appendChild(checkbox);
+    item.appendChild(avatar);
+    item.appendChild(name);
+    fileRecipientList.appendChild(item);
+  });
+
+  fileRecipientModal.classList.add('active');
+}
+
+$('file-recipient-cancel').addEventListener('click', () => {
+  fileRecipientModal.classList.remove('active');
+  pendingFile = null;
+  pendingFileMeta = null;
+  pendingFileKey = null;
+});
+
+$('file-recipient-backdrop').addEventListener('click', () => {
+  fileRecipientModal.classList.remove('active');
+  pendingFile = null;
+  pendingFileMeta = null;
+  pendingFileKey = null;
+});
+
+$('file-recipient-confirm').addEventListener('click', () => {
+  const checkboxes = fileRecipientList.querySelectorAll('.file-recipient-checkbox:checked');
+  if (checkboxes.length === 0) {
+    showToast('请至少选择一个接收人', 'error');
+    return;
+  }
+
+  checkboxes.forEach(cb => {
+    sendFileRequest(cb.value, pendingFileMeta);
+  });
+
+  fileRecipientModal.classList.remove('active');
+  pendingFile = null;
+  pendingFileMeta = null;
+  pendingFileKey = null;
+});
+
+function sendFileRequest(targetSessionId, fileMeta) {
+  const target = userOrder.find(u => u.sessionId === targetSessionId);
+
+  currentWebSocket.send(JSON.stringify({
+    type: 'fileRequest',
+    targetSessionId: targetSessionId,
+    fileMeta
+  }));
+
+  // 存储发送状态（按目标用户区分）
+  if (!fileTransferState) fileTransferState = {};
+  fileTransferState[targetSessionId] = {
+    targetSessionId,
+    file: pendingFile,
+    fileMeta,
+    fileKey: pendingFileKey,
+    chunkSize: 1024 * 1024,
+    totalChunks: fileMeta.totalChunks,
+    accepted: false
+  };
+
+  showToast(`已向 ${target ? target.name : '用户'} 发送文件传输请求`, 'success');
+}
+
+function hideFileIncoming() {
+  fileIncomingBar.classList.remove('show');
   if (fileRequestTimer) {
     clearTimeout(fileRequestTimer);
     fileRequestTimer = null;
   }
 }
 
-function showFileRequest(data) {
-  const toast = fileRequestToast;
-  $('file-request-header').textContent = `${data.fromName} 想发送文件`;
-  $('file-request-meta').textContent = `${data.fileMeta.name} (${formatFileSize(data.fileMeta.size)})`;
+function showFileIncoming(data) {
+  fileIncomingFrom.textContent = `${data.fromName} 想发送文件`;
+  fileIncomingDetail.textContent = `${data.fileMeta.name} · ${formatFileSize(data.fileMeta.size)}`;
 
-  toast.classList.add('show');
+  fileIncomingBar.classList.add('show');
 
   // 30秒后自动关闭
   if (fileRequestTimer) clearTimeout(fileRequestTimer);
   fileRequestTimer = setTimeout(() => {
-    toast.classList.remove('show');
+    fileIncomingBar.classList.remove('show');
   }, 30000);
 
-  $('file-accept').onclick = () => {
-    hideFileRequest();
+  $('file-accept-mini').onclick = () => {
+    hideFileIncoming();
     currentWebSocket.send(JSON.stringify({
       type: 'fileResponse',
       targetSessionId: data.fromSessionId,
@@ -1829,7 +2045,9 @@ function showFileRequest(data) {
       fileMeta: data.fileMeta
     }));
 
-    fileTransferState = {
+    // 存储接收状态（按发送者区分）
+    if (!fileTransferState) fileTransferState = {};
+    fileTransferState[data.fromSessionId] = {
       fromSessionId: data.fromSessionId,
       fileMeta: data.fileMeta,
       chunks: [],
@@ -1838,8 +2056,8 @@ function showFileRequest(data) {
     showToast('开始接收文件...', 'success');
   };
 
-  $('file-decline').onclick = () => {
-    hideFileRequest();
+  $('file-decline-mini').onclick = () => {
+    hideFileIncoming();
     currentWebSocket.send(JSON.stringify({
       type: 'fileResponse',
       targetSessionId: data.fromSessionId,
@@ -1850,22 +2068,23 @@ function showFileRequest(data) {
 }
 
 function handleFileResponse(data) {
-  if (!fileTransferState) return;
+  const state = fileTransferState && fileTransferState[data.fromSessionId];
+  if (!state) return;
   if (data.accepted) {
-    fileTransferState.accepted = true;
+    state.accepted = true;
     showToast('对方已接受，开始传输...', 'success');
-    sendFileChunks();
+    sendFileChunks(data.fromSessionId);
   } else {
     showToast('对方拒绝了文件传输', 'error');
-    fileTransferState = null;
+    delete fileTransferState[data.fromSessionId];
   }
 }
 
-async function sendFileChunks() {
-  const state = fileTransferState;
+async function sendFileChunks(targetSessionId) {
+  const state = fileTransferState && fileTransferState[targetSessionId];
   if (!state || !state.accepted) return;
 
-  const { file, fileKey, chunkSize, totalChunks, targetSessionId } = state;
+  const { file, fileKey, chunkSize, totalChunks } = state;
 
   for (let i = 0; i < totalChunks; i++) {
     const start = i * chunkSize;
@@ -1898,13 +2117,13 @@ async function sendFileChunks() {
   }));
 
   showToast('文件传输完成', 'success');
-  fileTransferState = null;
+  delete fileTransferState[targetSessionId];
 }
 
 async function handleFileChunk(data) {
-  if (!fileTransferState || fileTransferState.fromSessionId !== data.fromSessionId) return;
+  const state = fileTransferState && fileTransferState[data.fromSessionId];
+  if (!state) return;
 
-  const state = fileTransferState;
   const combined = Uint8Array.from(atob(data.chunkData), c => c.charCodeAt(0));
   const iv = combined.slice(0, 12);
   const ciphertext = combined.slice(12);
@@ -1933,7 +2152,7 @@ async function handleFileChunk(data) {
       URL.revokeObjectURL(url);
 
       showToast(`文件 ${state.fileMeta.name} 接收完成`, 'success');
-      fileTransferState = null;
+      delete fileTransferState[data.fromSessionId];
     }
   } catch (e) {
     console.error('解密分片失败:', e);
