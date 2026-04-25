@@ -1451,7 +1451,8 @@ async function startChat(passwordHash) {
 
 async function join(passwordHash) {
   const wss = location.protocol === 'http:' ? 'ws://' : 'wss://';
-  const wsUrl = `${wss}${hostname}/api/room/${roomCode}/websocket`;
+  const basePath = location.pathname.replace(/\/$/, '');
+  const wsUrl = `${wss}${location.host}${basePath}/api/room/${roomCode}/websocket`;
 
   try {
     const ws = new WebSocket(wsUrl);

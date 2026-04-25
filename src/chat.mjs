@@ -276,7 +276,7 @@ export class ChatRoom {
       aesKey: null,
       created: false
     };
-    this.sessions.clear();
+    // 注意：不要清空 this.sessions，因为可能有新连接在重置期间建立
     this.lastTimestamp = 0;
     console.log(`房间已重置: ${this.state.id}`);
   }
