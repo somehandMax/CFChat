@@ -213,25 +213,6 @@
       text-decoration: underline;
     }
 
-    .auth-divider {
-      width: 100%;
-      max-width: 360px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0;
-      color: var(--text-secondary);
-      font-size: 13px;
-    }
-
-    .auth-divider::before,
-    .auth-divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border-color);
-    }
-
     /* ================== 聊天主界面 ================== */
     #chatroom {
       display: none;
@@ -300,11 +281,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .header-status {
-      font-size: 13px;
-      color: var(--text-secondary);
     }
 
     .header-actions {
@@ -848,7 +824,7 @@
       position: fixed;
       top: 72px;
       left: 50%;
-      transform: translateX(-50%) translateY(-100%);
+      transform: translateX(-50%) translateY(-120%);
       background: var(--surface-color);
       border-radius: var(--radius-lg);
       padding: 16px;
@@ -899,33 +875,6 @@
     .btn-decline {
       background: var(--border-color);
       color: var(--text-color);
-    }
-
-    /* 连接状态指示 */
-    .connection-status {
-      position: fixed;
-      top: var(--header-height);
-      left: 0;
-      right: 0;
-      height: 28px;
-      background: #ff9800;
-      color: #fff;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-      transform: translateY(-100%);
-      transition: transform 0.3s;
-    }
-
-    .connection-status.show {
-      transform: translateY(0);
-    }
-
-    .connection-status.connected {
-      background: #43a047;
-      transform: translateY(-100%);
     }
 
     /* 密码输入框 */
@@ -996,7 +945,7 @@
 <div class="auth-page hidden" id="room-page">
   <div class="auth-logo">🔐</div>
   <div class="auth-title">加入房间</div>
-  <div class="auth-subtitle">输入6位数字口令进入已有房间，或创建新房间</div>
+  <div class="auth-subtitle">输入6位数字口令进入房间</div>
 
   <div class="auth-input-group">
     <label>房间口令</label>
@@ -1018,10 +967,6 @@
 
   <button class="auth-btn" id="join-room-btn">进入房间</button>
 
-  <div class="auth-divider">或</div>
-
-  <button class="auth-btn" id="create-room-btn" style="background:var(--surface-color);color:var(--primary-color);border:2px solid var(--primary-color)">创建新房间</button>
-
   <button class="auth-link" id="back-to-name">← 返回修改昵称</button>
 </div>
 
@@ -1032,7 +977,6 @@
     <div class="header-avatar" id="room-avatar">🏠</div>
     <div class="header-info">
       <div class="header-title" id="room-title-text">房间</div>
-      <div class="header-status" id="room-status">连接中...</div>
     </div>
     <div class="header-actions">
       <button class="header-btn" id="theme-toggle" title="切换主题">🌙</button>
@@ -1041,14 +985,22 @@
     </div>
   </div>
 
-  <div class="connection-status" id="conn-status">正在重新连接...</div>
-
   <div id="chatlog"></div>
 
   <div class="chat-input-area">
     <button class="input-btn" id="file-btn" title="发送文件">📎</button>
     <input type="text" id="chat-input" placeholder="输入消息..." autocomplete="off">
     <button id="send-button">➤</button>
+  </div>
+
+  <!-- 文件传输请求提示 -->
+  <div class="file-request-toast" id="file-request-toast">
+    <div class="file-request-header" id="file-request-header">文件传输请求</div>
+    <div class="file-request-meta" id="file-request-meta"></div>
+    <div class="file-request-actions">
+      <button class="btn-decline" id="file-decline">拒绝</button>
+      <button class="btn-accept" id="file-accept">接收</button>
+    </div>
   </div>
 </div>
 
@@ -1106,15 +1058,7 @@
   </div>
 </div>
 
-<!-- ================== 文件传输请求提示 ================== -->
-<div class="file-request-toast" id="file-request-toast">
-  <div class="file-request-header" id="file-request-header">文件传输请求</div>
-  <div class="file-request-meta" id="file-request-meta"></div>
-  <div class="file-request-actions">
-    <button class="btn-decline" id="file-decline">拒绝</button>
-    <button class="btn-accept" id="file-accept">接收</button>
-  </div>
-</div>
+
 
 <!-- ================== Toast提示 ================== -->
 <div class="toast" id="toast"></div>
@@ -1170,7 +1114,6 @@ const CryptoUtils = {
     return new TextDecoder().decode(decrypted);
   },
 
-  // MD5 简单实现（用于密码哈希）
   async md5(message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
@@ -1190,7 +1133,6 @@ const nameInput = $('name-input');
 const nameSubmit = $('name-submit');
 const codeInputs = document.querySelectorAll('.code-input');
 const joinRoomBtn = $('join-room-btn');
-const createRoomBtn = $('create-room-btn');
 const backToName = $('back-to-name');
 const roomPassword = $('room-password');
 const passwordGroup = $('password-group');
@@ -1207,13 +1149,12 @@ const themeToggle = $('theme-toggle');
 const settingsBtn = $('settings-btn');
 const settingsModal = $('settings-modal');
 const leaveRoom = $('leave-room');
-const connStatus = $('conn-status');
 const toast = $('toast');
 const fileInput = $('file-input');
 const fileBtn = $('file-btn');
 const fileRequestToast = $('file-request-toast');
 const roomTitleText = $('room-title-text');
-const roomStatus = $('room-status');
+
 
 // ===============================
 // 初始化
@@ -1226,11 +1167,9 @@ function init() {
 
   nameInput.focus();
 
-  // 检查URL hash
   const hash = location.hash.slice(1);
   if (/^\d{6}$/.test(hash)) {
     roomCode = hash;
-    // 直接显示房间页面并填入口令
     setTimeout(() => {
       namePage.classList.add('hidden');
       roomPage.classList.remove('hidden');
@@ -1281,7 +1220,6 @@ function getCodeFromInputs() {
 codeInputs.forEach((input, index) => {
   input.addEventListener('input', (e) => {
     const val = e.target.value;
-    // 仅允许数字
     if (!/^\d*$/.test(val)) {
       e.target.value = val.replace(/\D/g, '');
       return;
@@ -1290,6 +1228,12 @@ codeInputs.forEach((input, index) => {
       e.target.classList.add('filled');
       if (index < codeInputs.length - 1) {
         codeInputs[index + 1].focus();
+      } else {
+        // 最后一位输入完成，自动尝试进入房间
+        const code = getCodeFromInputs();
+        if (/^\d{6}$/.test(code)) {
+          setTimeout(() => joinRoomBtn.click(), 200);
+        }
       }
     } else if (val.length === 0) {
       e.target.classList.remove('filled');
@@ -1314,11 +1258,15 @@ codeInputs.forEach((input, index) => {
     fillCodeInputs(paste);
     const nextIndex = Math.min(paste.length, 5);
     codeInputs[nextIndex].focus();
+    // 粘贴完整6位后自动进入
+    if (paste.length === 6) {
+      setTimeout(() => joinRoomBtn.click(), 200);
+    }
   });
 });
 
 // ===============================
-// 加入/创建房间
+// 加入/创建房间（统一入口）
 // ===============================
 joinRoomBtn.addEventListener('click', async () => {
   const code = getCodeFromInputs();
@@ -1327,9 +1275,7 @@ joinRoomBtn.addEventListener('click', async () => {
     return;
   }
   roomCode = code;
-  passwordGroup.style.display = 'block';
 
-  // 如果有密码，先让用户输入
   const pwd = roomPassword.value.trim();
   let passwordHash = null;
   if (pwd) {
@@ -1337,15 +1283,6 @@ joinRoomBtn.addEventListener('click', async () => {
   }
 
   startChat(passwordHash);
-});
-
-createRoomBtn.addEventListener('click', async () => {
-  // 生成6位随机数字
-  roomCode = String(Math.floor(100000 + Math.random() * 900000));
-  fillCodeInputs(roomCode);
-  showToast(`新房间口令：${roomCode.slice(0,3)}-${roomCode.slice(3)}`, 'success');
-  passwordGroup.style.display = 'none';
-  startChat(null);
 });
 
 // ===============================
@@ -1377,8 +1314,6 @@ async function join(passwordHash) {
   const wss = location.protocol === 'http:' ? 'ws://' : 'wss://';
   const wsUrl = `${wss}${hostname}/api/room/${roomCode}/websocket`;
 
-  showConnStatus('连接中...', true);
-
   try {
     const ws = new WebSocket(wsUrl);
     currentWebSocket = ws;
@@ -1386,10 +1321,7 @@ async function join(passwordHash) {
     ws.addEventListener('open', async () => {
       reconnectAttempts = 0;
       isReconnecting = false;
-      showConnStatus('', false);
-      roomStatus.textContent = '已连接';
 
-      // 发送入房请求
       ws.send(JSON.stringify({
         type: 'join',
         name: username,
@@ -1408,7 +1340,6 @@ async function join(passwordHash) {
     });
 
     ws.addEventListener('close', (e) => {
-      roomStatus.textContent = '已断开';
       if (!isReconnecting) {
         scheduleReconnect(passwordHash);
       }
@@ -1416,7 +1347,6 @@ async function join(passwordHash) {
 
     ws.addEventListener('error', (e) => {
       console.error('WebSocket error:', e);
-      roomStatus.textContent = '连接错误';
     });
   } catch (e) {
     console.error('连接失败:', e);
@@ -1431,8 +1361,6 @@ function scheduleReconnect(passwordHash) {
   reconnectAttempts++;
   const delay = Math.min(10000, reconnectAttempts * 2000);
 
-  showConnStatus(`连接断开，${delay/1000}秒后重连...`, true);
-
   setTimeout(() => {
     isReconnecting = false;
     join(passwordHash);
@@ -1443,11 +1371,9 @@ function scheduleReconnect(passwordHash) {
 // WebSocket 消息处理
 // ===============================
 async function handleWsMessage(data, ws) {
-  // 错误处理
   if (data.error) {
     showToast(data.error, 'error');
     if (data.errorCode === 1003 || data.errorCode === 1004) {
-      // 被拉黑或房间关闭，返回房间页
       setTimeout(() => location.reload(), 2000);
     }
     return;
@@ -1512,7 +1438,6 @@ async function handleWsMessage(data, ws) {
       const isMe = data.sessionId === sessionId;
       const time = new Date(data.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
-      // 尝试解密消息
       let displayMsg = data.message;
       if (aesKey && displayMsg.startsWith('ENC:')) {
         try {
@@ -1559,7 +1484,6 @@ async function handleWsMessage(data, ws) {
       break;
     }
 
-    // 兼容旧格式
     default: {
       if (data.joined) {
         addSystemMessage(`${data.joined} 加入了房间`);
@@ -1575,7 +1499,6 @@ async function handleWsMessage(data, ws) {
 }
 
 function getSessionIdFromWs() {
-  // sessionId 由服务端分配，通过 ready 消息同步
   if (!sessionId) {
     sessionId = localStorage.getItem('sessionId');
   }
@@ -1590,7 +1513,6 @@ async function sendMessage() {
   if (!text || !currentWebSocket) return;
 
   let payload = text;
-  // 加密消息
   if (aesKey) {
     try {
       const encrypted = await CryptoUtils.encrypt(text, aesKey);
@@ -1696,7 +1618,6 @@ function updateRoster() {
       div.appendChild(badge);
     }
 
-    // 房主操作按钮
     if (isOwner && !isSelf) {
       const actions = document.createElement('div');
       actions.className = 'user-actions';
@@ -1823,23 +1744,19 @@ fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // 选择接收者
   const recipients = userOrder.filter(u => u.sessionId !== sessionId);
   if (recipients.length === 0) {
     showToast('房间内没有其他用户', 'error');
     return;
   }
 
-  // 简化：发送给第一个其他用户，或弹出选择
   const target = recipients[0];
 
-  // 生成文件传输密钥
   const fileKeyArr = new Uint8Array(32);
   crypto.getRandomValues(fileKeyArr);
   const fileKey = btoa(String.fromCharCode(...fileKeyArr));
 
-  // 读取并加密文件（分片）
-  const chunkSize = 1024 * 1024; // 1MB
+  const chunkSize = 1024 * 1024;
   const totalChunks = Math.ceil(file.size / chunkSize);
 
   const fileMeta = {
@@ -1850,7 +1767,6 @@ fileInput.addEventListener('change', async (e) => {
     key: fileKey
   };
 
-  // 发送传输请求
   currentWebSocket.send(JSON.stringify({
     type: 'fileRequest',
     targetSessionId: target.sessionId,
@@ -1887,7 +1803,6 @@ function showFileRequest(data) {
       fileMeta: data.fileMeta
     }));
 
-    // 准备接收
     fileTransferState = {
       fromSessionId: data.fromSessionId,
       fileMeta: data.fileMeta,
@@ -1932,7 +1847,6 @@ async function sendFileChunks() {
     const chunk = file.slice(start, end);
     const arrayBuffer = await chunk.arrayBuffer();
 
-    // 加密分片
     const key = await CryptoUtils.importKey(fileKey);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, arrayBuffer);
@@ -1976,7 +1890,6 @@ async function handleFileChunk(data) {
     state.receivedChunks++;
 
     if (state.receivedChunks === data.totalChunks) {
-      // 合并文件
       const totalSize = state.chunks.reduce((sum, c) => sum + c.byteLength, 0);
       const merged = new Uint8Array(totalSize);
       let offset = 0;
@@ -2090,14 +2003,6 @@ function showToast(message, type = '') {
   toastTimer = setTimeout(() => {
     toast.classList.remove('show');
   }, 3000);
-}
-
-// ===============================
-// 连接状态提示
-// ===============================
-function showConnStatus(text, show) {
-  connStatus.textContent = text;
-  connStatus.classList.toggle('show', show);
 }
 
 // ===============================

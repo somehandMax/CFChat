@@ -6,7 +6,7 @@
 
 这个演示的独特之处在于它处理了状态问题。在 Durable Objects 出现之前，Workers 是无状态的，状态必须存储在别处。状态不仅意味着存储，还意味着协调能力。在聊天室中，当一个用户发送消息时，应用必须通过其他用户已经建立的连接将消息路由给他们。这些连接就是状态，在无状态框架中协调它们非常困难甚至不可能。
 
-原仓库为：[Cloudflare-Workers-Chat](https://github.com/yeeyrr/Cloudflare-Workers-Chat/)，我进行了界面优化
+原仓库为：https://github.com/yeeyrr/Cloudflare-Workers-Chat/，我进行了界面优化
 
 ## 工作原理
 
